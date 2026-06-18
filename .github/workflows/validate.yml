@@ -11,7 +11,7 @@ jobs:
     name: overlays build (ns-agnostic)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build each stage overlay
         run: |
           set -euo pipefail
@@ -34,7 +34,7 @@ jobs:
     name: go unit test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: stable
