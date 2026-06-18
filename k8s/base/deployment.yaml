@@ -51,6 +51,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            # The AWS SDK needs an explicit region: IMDS (its usual fallback) is egress-blocked in environment
+            # namespaces, and EKS Pod Identity supplies creds (container-creds endpoint) but not the region.
+            - name: AWS_REGION
+              value: us-east-1
           securityContext:
             allowPrivilegeEscalation: false
             # Immutable container filesystem — writes go to the emptyDir /tmp below. Regulated-tier ready.
