@@ -1,0 +1,13 @@
+# dev (the default stage). Single replica. The image is NOT pinned here (ADR-071): the per-Product
+# ApplicationSet injects the deployed digest from the control-plane Release record
+# (gitops/releases/<team>/<product>/dev.yaml). CI never writes this repo's main; `placeholder` stays.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+replicas:
+  - name: app-alpha-conformance
+    count: 1
+images:
+  - name: 829808296602.dkr.ecr.us-east-1.amazonaws.com/team-alpha/conformance-web
+    newTag: placeholder # the ApplicationSet injects the real digest from the Release record (ADR-071)

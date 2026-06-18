@@ -1,0 +1,56 @@
+name: Deploy
+
+# Thin caller (ADR-067 / ADR-071). The supply-chain backbone lives in the app-team-unwritable
+# asanexample/trusted-ci repo:
+#   build      -> build-sign.yml       builds from the Dockerfile, pushes to team-alpha/conformance-web,
+#                                       cosign-signs the image + attaches a CycloneDX SBOM (trusted-ci's identity).
+#   provenance -> slsa-provenance.yml   attaches the SLSA build provenance (SLSA L3, isolated signer).
+#   promote    -> promote.yml           records the deployed digest in the PLATFORM control-plane repo (a gated PR
+#                                        bumping gitops/releases/alpha/conformance/dev.yaml).
+#                                        The per-Product ApplicationSet injects it. THIS repo's main is NEVER
+#                                        written by CI — no contents:write — so it stays fully protected (ADR-071).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    permissions:
+      id-token: write # OIDC: AWS (ECR push) + cosign keyless signing
+      contents: read
+    uses: asanexample/trusted-ci/.github/workflows/build-sign.yml@28dbe1b66c2be6b05801575617d307cafd4a67e7
+    with:
+      app: conformance-web # product-scoped image: team-alpha/conformance-web
+      product: conformance # selects the per-Product OIDC role github-actions-ecr-push-product-alpha-conformance (ADR-069)
+      tag: ${{ github.sha }}
+
+  provenance:
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+    uses: asanexample/trusted-ci/.github/workflows/slsa-provenance.yml@28dbe1b66c2be6b05801575617d307cafd4a67e7
+    with:
+      image: ${{ needs.build.outputs.image }}
+      digest: ${{ needs.build.outputs.digest }}
+      product: conformance # selects the per-Product OIDC role github-actions-ecr-push-product-alpha-conformance (ADR-069)
+
+  # Gated on BOTH build and provenance so the promoted digest already carries its signature, SBOM AND provenance
+  # — no window where Kyverno's Enforce verify-*-product would reject it. promote opens a gated PR in the platform
+  # repo (as the asanexample-promote App); the gitops Gate auto-merges it; the ApplicationSet injects the digest.
+  promote:
+    needs: [build, provenance]
+    permissions:
+      id-token: write # OIDC -> per-Product role -> read the promote App key (NO contents write on this repo)
+      contents: read
+    uses: asanexample/trusted-ci/.github/workflows/promote.yml@28dbe1b66c2be6b05801575617d307cafd4a67e7
+    with:
+      product: conformance
+      service: web
+      stage: dev
+      digest: ${{ needs.build.outputs.digest }}

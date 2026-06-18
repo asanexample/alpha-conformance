@@ -1,0 +1,41 @@
+name: Validate manifests
+
+# manifest validation (ADR-067). The per-Product ApplicationSet syncs k8s/overlays/<stage> and injects the
+# namespace + host; admission (Kyverno) is the enforcement point. This job is the shift-left: it asserts every
+# stage overlay BUILDS and stays namespace-/host-agnostic + product-scoped, and runs the app's unit test.
+on:
+  pull_request:
+
+jobs:
+  overlays-build:
+    name: overlays build (ns-agnostic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build each stage overlay
+        run: |
+          set -euo pipefail
+          rc=0
+          for s in dev test uat staging prod; do
+            out="$(kubectl kustomize "k8s/overlays/$s")" || { echo "::error::overlays/$s failed to build"; rc=1; continue; }
+            # no resource may carry its own metadata.namespace (placement is ArgoCD destination.namespace).
+            if printf '%s' "$out" | grep -qE '^  namespace: '; then
+              echo "::error::overlays/$s: a resource has a hardcoded metadata.namespace (must be ns-agnostic)"; rc=1
+            fi
+            # the route host must stay the fail-safe placeholder (the platform injects the real host).
+            printf '%s' "$out" | grep -q 'placeholder.invalid' || { echo "::error::overlays/$s: HTTPRoute host placeholder missing"; rc=1; }
+            # the image must be product-scoped (team-alpha/conformance-<service>), never a bare v2 path.
+            printf '%s' "$out" | grep -qE 'image: .*/team-alpha/conformance-[a-z0-9-]+' || { echo "::error::overlays/$s: image is not product-scoped team-alpha/conformance-<service>"; rc=1; }
+            echo "overlays/$s: built"
+          done
+          exit $rc
+
+  test:
+    name: go unit test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go test ./...
