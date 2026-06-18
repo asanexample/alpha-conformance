@@ -1,9 +1,9 @@
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
 
 WORKDIR /src
-# Stdlib-only: go.mod has no requires, so there is no go.sum to copy. `go mod download` is a no-op but
-# kept so the layer caches dependency resolution once this app grows deps (add go.sum to the COPY then).
-COPY go.mod ./
+# go.mod + go.sum: this app uses the AWS SDK (ADR-073 conformance checks), so the lockfile is copied first to
+# cache dependency download as its own layer.
+COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 
