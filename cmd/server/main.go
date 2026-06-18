@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/smithy-go"
@@ -118,7 +119,9 @@ func selftest(w http.ResponseWriter, r *http.Request) {
 func s3RoundTrip(ctx context.Context, cfg aws.Config, bucket string) error {
 	c := s3.NewFromConfig(cfg)
 	body := []byte("conformance " + time.Now().UTC().Format(time.RFC3339Nano))
-	if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: aws.String(probeKey), Body: bytes.NewReader(body)}); err != nil {
+	// The org SCP `enforce-encryption` denies any PutObject without an explicit server-side-encryption header
+	// (even though the bucket defaults to SSE-S3), so every upload to a paved-road bucket must set it.
+	if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: aws.String(probeKey), Body: bytes.NewReader(body), ServerSideEncryption: s3types.ServerSideEncryptionAes256}); err != nil {
 		return wrap("put", err)
 	}
 	out, err := c.GetObject(ctx, &s3.GetObjectInput{Bucket: &bucket, Key: aws.String(probeKey)})
