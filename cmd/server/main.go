@@ -258,4 +258,3 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-// canary incremental timing probe (trusted-ci#22)
