@@ -23,7 +23,7 @@ jobs:
     permissions:
       id-token: write # OIDC: AWS (ECR push) + cosign keyless signing
       contents: read
-    uses: asanexample/trusted-ci/.github/workflows/build-sign.yml@088869bc05d705dcf502aed86d30284cf31dfb90
+    uses: asanexample/trusted-ci/.github/workflows/build-sign.yml@7a739dcd25cff26ac7c33f2301166a1c34301b6c
     with:
       app: conformance-web # product-scoped image: team-alpha/conformance-web
       product: conformance # selects the per-Product OIDC role github-actions-ecr-push-product-alpha-conformance (ADR-069)
