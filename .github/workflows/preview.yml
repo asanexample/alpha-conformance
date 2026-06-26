@@ -19,11 +19,12 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    uses: asanexample/trusted-ci/.github/workflows/build-sign.yml@7a739dcd25cff26ac7c33f2301166a1c34301b6c
+    uses: asanexample/trusted-ci/.github/workflows/build-sign.yml@3c0fcec5f62e95e29c0ed82546c090d940567e66
     with:
       app: conformance-web # product-scoped image team-alpha/conformance-web (v3); PR-preview delivery is a separate enhancement
       product: conformance # selects the per-Product OIDC role github-actions-ecr-push-product-alpha-conformance (ADR-069) — required input
       tag: ${{ github.event.pull_request.head.sha }}
+      go-build-cache: true # CANARY: validate opt-in cache-dance path
 
   provenance:
     needs: build
