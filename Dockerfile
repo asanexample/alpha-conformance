@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 
 WORKDIR /src
 # go.mod + go.sum: this app uses the AWS SDK (ADR-073 conformance checks), so the lockfile is copied first to
